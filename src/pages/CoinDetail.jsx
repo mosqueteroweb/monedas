@@ -93,10 +93,10 @@ export default function CoinDetail() {
                `}
              >
                {estimating ? <RefreshCw className="animate-spin" /> : <DollarSign />}
-               {coin.marketValue !== null ? 'Re-tasar con IA' : 'Tasar con IA'}
+               {coin.marketValue !== null ? 'Volver a Comprobar Valor' : 'Comprobar Valor Especial'}
              </button>
              <p className="text-xs text-gray-400 mt-2 text-center">
-               Estimación basada en IA comparativa. No es una tasación oficial.
+               Busca información numismática y estima valor de mercado. No es una tasación oficial.
              </p>
            </div>
         </div>
