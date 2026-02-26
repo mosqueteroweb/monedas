@@ -76,6 +76,10 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      <div className="mt-8 text-center text-xs text-gray-400">
+        v1.0.2 (Gemini 3 Flash)
+      </div>
     </div>
   );
 }
