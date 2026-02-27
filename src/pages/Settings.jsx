@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Lock, AlertCircle, Download, Upload, Trash2, X } from 'lucide-react';
+import { Save, Lock, AlertCircle, Download, Upload, Trash2, X, Loader } from 'lucide-react';
 import { exportDatabase, importDatabase, clearDatabase } from '../utils/dataUtils';
 
 export default function Settings() {
@@ -10,6 +10,7 @@ export default function Settings() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(''); // Progress message
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -33,15 +34,17 @@ export default function Settings() {
   const handleExport = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    setStatus('Exportando base de datos...');
+    setProgress('Iniciando exportación...');
+
     try {
-      const result = await exportDatabase();
+      const result = await exportDatabase((msg) => setProgress(msg));
       setStatus(`Base de datos exportada (${result.count} monedas).`);
     } catch (error) {
       console.error(error);
       setStatus('Error al exportar base de datos.');
     } finally {
       setIsLoading(false);
+      setProgress('');
       setTimeout(() => setStatus(''), 3000);
     }
   };
@@ -56,16 +59,17 @@ export default function Settings() {
 
     if (isLoading) return;
     setIsLoading(true);
-    setStatus('Importando base de datos...');
+    setProgress('Iniciando importación...');
 
     try {
-      const result = await importDatabase(file);
-      setStatus(`Base de datos importada (${result.count} monedas).`);
+      const result = await importDatabase(file, (msg) => setProgress(msg));
+      setStatus(`Importación completada. Nuevas: ${result.count}. Total: ${result.totalProcessed}.`);
     } catch (error) {
       console.error(error);
       setStatus('Error al importar: ' + error.message);
     } finally {
       setIsLoading(false);
+      setProgress('');
       if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
       setTimeout(() => setStatus(''), 3000);
     }
@@ -154,7 +158,7 @@ export default function Settings() {
               disabled={isLoading}
               className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <Download size={18} />
+              {isLoading && progress.includes('Export') ? <Loader className="animate-spin" size={18} /> : <Download size={18} />}
               Exportar
             </button>
 
@@ -163,7 +167,7 @@ export default function Settings() {
               disabled={isLoading}
               className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <Upload size={18} />
+              {isLoading && progress.includes('Import') ? <Loader className="animate-spin" size={18} /> : <Upload size={18} />}
               Importar
             </button>
             {/* Hidden file input */}
@@ -171,10 +175,18 @@ export default function Settings() {
               type="file"
               ref={fileInputRef}
               onChange={handleImportFile}
-              accept=".json"
+              accept=".zip"
               className="hidden"
             />
           </div>
+
+          {/* Progress Indicator */}
+          {isLoading && progress && (
+             <div className="w-full bg-gray-100 rounded-full h-2.5 mt-2 overflow-hidden">
+               <div className="bg-blue-600 h-2.5 rounded-full animate-pulse w-full"></div>
+               <p className="text-xs text-center mt-1 text-gray-500">{progress}</p>
+             </div>
+          )}
 
           <div className="pt-2">
              <button
