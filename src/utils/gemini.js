@@ -25,8 +25,8 @@ export async function identifyCoin(frontBlob, backBlob) {
 
   try {
     return JSON.parse(result);
-  } catch (e) {
-    console.error("Error parsing JSON", result);
+  } catch (error) {
+    console.error("Error parsing JSON", result, error);
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]);
     throw new Error("Formato de respuesta inválido de la IA");
@@ -64,6 +64,37 @@ export async function estimateValue(coin) {
   return isNaN(value) ? 0 : value;
 }
 
+export async function detectCoinBoundingBox(imageBlob) {
+  const apiKey = localStorage.getItem('GEMINI_API_KEY');
+  if (!apiKey) return null; // Can't detect without API Key
+
+  const base64 = await blobToBase64(imageBlob);
+
+  const prompt = `
+    Detecta la moneda en esta imagen y dame las coordenadas de la caja delimitadora (bounding box) en formato [ymin, xmin, ymax, xmax].
+    Los valores deben estar normalizados entre 0 y 1.
+    Si hay más de una moneda, detecta la más prominente.
+    Si no hay moneda, responde null.
+
+    Responde ÚNICAMENTE con el array JSON: [ymin, xmin, ymax, xmax]
+  `;
+
+  try {
+    const resultText = await callGemini(apiKey, prompt, [
+      { mime_type: imageBlob.type, data: base64 }
+    ], "application/json");
+
+    const result = JSON.parse(resultText);
+    if (Array.isArray(result) && result.length === 4) {
+        return result;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Error detecting bounding box:", error);
+    return null; // Fail gracefully
+  }
+}
+
 async function callGemini(apiKey, prompt, images, mimeType = "application/json") {
   const parts = [{ text: prompt }];
 
@@ -83,7 +114,9 @@ async function callGemini(apiKey, prompt, images, mimeType = "application/json")
     }
   };
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+  // Using the requested model: gemma-3-27b-it
+  // Note: If this model is not available in the API, users will need to revert or update their key permissions.
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
