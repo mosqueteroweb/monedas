@@ -175,3 +175,55 @@ export function stitchImages(frontBlob, backBlob) {
     if (backBlob instanceof Blob) reader2.readAsDataURL(backBlob);
   });
 }
+
+export function stitchImages(frontBlob, backBlob) {
+  return new Promise((resolve, reject) => {
+    const reader1 = new FileReader();
+    const reader2 = new FileReader();
+    let img1 = null;
+    let img2 = null;
+
+    const tryStitch = () => {
+      if (img1 && img2) {
+        try {
+          // Combine side-by-side
+          const canvas = document.createElement('canvas');
+          const width = img1.width + img2.width + 20; // 20px gap
+          const height = Math.max(img1.height, img2.height);
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+
+          // Fill white background
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+
+          // Draw images
+          ctx.drawImage(img1, 0, (height - img1.height) / 2);
+          ctx.drawImage(img2, img1.width + 20, (height - img2.height) / 2);
+
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to blob failed'));
+          }, 'image/jpeg', 0.9);
+        } catch (e) {
+          reject(e);
+        }
+      }
+    };
+
+    reader1.onload = (e) => {
+      const img = new Image();
+      img.onload = () => { img1 = img; tryStitch(); };
+      img.src = e.target.result;
+    };
+    reader2.onload = (e) => {
+      const img = new Image();
+      img.onload = () => { img2 = img; tryStitch(); };
+      img.src = e.target.result;
+    };
+
+    reader1.readAsDataURL(frontBlob);
+    reader2.readAsDataURL(backBlob);
+  });
+}
