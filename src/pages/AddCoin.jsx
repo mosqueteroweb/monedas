@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Camera, ArrowLeft, ArrowRight, Save, Loader } from 'lucide-react';
+import { Camera, ArrowLeft, ArrowRight, Save, Loader, Scissors } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
-import { identifyCoin } from '../utils/gemini';
+import { identifyCoin, detectCoinBoundingBox } from '../utils/gemini';
+import { cropImage } from '../utils/imageProcessing';
 import { db } from '../db';
 
 export default function AddCoin() {
   const navigate = useNavigate();
-  const [step, setStep] = useState('capture'); // capture, analyzing, verify
+  const [step, setStep] = useState('capture'); // capture, processing_crop, analyzing, verify
   const [frontImage, setFrontImage] = useState(null);
   const [backImage, setBackImage] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [cropStatus, setCropStatus] = useState('');
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -43,9 +45,38 @@ export default function AddCoin() {
   const handleAnalyze = async () => {
     if (!frontImage || !backImage) return;
 
-    setStep('analyzing');
+    // Step 1: Detect and Crop
+    setStep('processing_crop');
+    let finalFront = frontImage;
+    let finalBack = backImage;
+
     try {
-      const data = await identifyCoin(frontImage, backImage);
+      setCropStatus('Detectando moneda en anverso...');
+      const frontBBox = await detectCoinBoundingBox(frontImage);
+      if (frontBBox) {
+        setCropStatus('Recortando anverso...');
+        finalFront = await cropImage(frontImage, frontBBox);
+        setFrontImage(finalFront); // Update state with cropped image
+      }
+
+      setCropStatus('Detectando moneda en reverso...');
+      const backBBox = await detectCoinBoundingBox(backImage);
+      if (backBBox) {
+        setCropStatus('Recortando reverso...');
+        finalBack = await cropImage(backImage, backBBox);
+        setBackImage(finalBack); // Update state with cropped image
+      }
+    } catch (cropError) {
+      console.warn("Error during auto-crop:", cropError);
+      // Continue with original images if cropping fails
+    }
+
+    // Step 2: Analyze Data
+    setStep('analyzing');
+    setCropStatus('');
+
+    try {
+      const data = await identifyCoin(finalFront, finalBack);
       setFormData({
         country: data.country || '',
         year: data.year || '',
@@ -81,6 +112,16 @@ export default function AddCoin() {
     }
   };
 
+  if (step === 'processing_crop') {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] text-center p-6">
+        <Scissors className="animate-bounce text-blue-600 mb-4" size={48} />
+        <h2 className="text-xl font-bold text-gray-800">Procesando Imágenes...</h2>
+        <p className="text-gray-500 mt-2">{cropStatus || 'Optimizando recortes...'}</p>
+      </div>
+    );
+  }
+
   if (step === 'analyzing') {
     return (
       <div className="flex flex-col items-center justify-center h-[80vh] text-center p-6">
@@ -109,6 +150,10 @@ export default function AddCoin() {
              <img src={URL.createObjectURL(backImage)} className="w-full h-full object-contain" alt="Reverso" />
           </div>
         </div>
+
+        <p className="text-xs text-center text-gray-500 mb-4 flex items-center justify-center gap-1">
+          <Scissors size={12} /> Imágenes recortadas automáticamente
+        </p>
 
         <form onSubmit={handleSave} className="space-y-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div>

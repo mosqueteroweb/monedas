@@ -1,17 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function CoinCard({ coin }) {
-  const [imageUrl, setImageUrl] = useState(null);
+  const [imageUrl, setImageUrl] = React.useState(null);
 
-  useEffect(() => {
-    let url;
+  React.useEffect(() => {
+    let url = null;
     if (coin.frontImage) {
       url = URL.createObjectURL(coin.frontImage);
       setImageUrl(url);
+    } else {
+        setImageUrl(null);
     }
+
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
     };
   }, [coin.frontImage]);
 
@@ -42,15 +47,17 @@ export default function CoinCard({ coin }) {
             {coin.country || 'Desconocido'}
           </p>
 
-          {coin.marketValue ? (
-             <div className="mt-auto pt-2 text-green-600 font-bold text-sm">
-               ~{coin.marketValue} €
-             </div>
-          ) : (
-            <div className="mt-auto pt-2 text-gray-400 text-xs italic">
-              Sin tasar
-            </div>
-          )}
+          <div className="mt-auto pt-2">
+            {coin.marketValue ? (
+              <div className="text-green-600 font-bold text-sm">
+                ~{coin.marketValue} €
+              </div>
+            ) : (
+              <div className="text-gray-400 text-xs italic">
+                Sin tasar
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Link>
