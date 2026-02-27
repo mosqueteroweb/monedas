@@ -25,8 +25,8 @@ export async function identifyCoin(frontBlob, backBlob) {
 
   try {
     return JSON.parse(result);
-  } catch (e) {
-    console.error("Error parsing JSON", result);
+  } catch (error) {
+    console.error("Error parsing JSON", result, error);
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (jsonMatch) return JSON.parse(jsonMatch[0]);
     throw new Error("Formato de respuesta inválido de la IA");
