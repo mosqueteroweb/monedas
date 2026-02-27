@@ -1,40 +1,36 @@
 from playwright.sync_api import sync_playwright
 
-def verify_data_management_ui(page):
-    page.goto("http://localhost:5173/#/settings")
+def verify_ui_changes():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
 
-    # Check "Gestión de Datos" section
-    page.wait_for_selector("text=Gestión de Datos")
+        # 1. Go to Settings
+        print("Navigating to Settings...")
+        page.goto("http://localhost:5173/#/settings")
+        page.wait_for_selector("text=Configuración")
 
-    # Check buttons and their icons (by text since icons are SVGs)
-    page.wait_for_selector("button:has-text('Exportar')")
-    page.wait_for_selector("button:has-text('Importar')")
-    page.wait_for_selector("button:has-text('Restablecer Base de Datos')")
+        # Verify GitHub Token label
+        print("Verifying GitHub Token label...")
+        if page.is_visible("text=GitHub Personal Access Token"):
+            print("SUCCESS: 'GitHub Personal Access Token' label found.")
+        else:
+            print("FAILURE: 'GitHub Personal Access Token' label NOT found.")
 
-    # Check functionality of Reset Modal
-    page.click("text=Restablecer Base de Datos")
-    page.wait_for_selector("text=Confirmar Borrado")
-    page.fill("input[placeholder='Borrar']", "Borrar")
+        # Take screenshot of Settings
+        page.screenshot(path="verification/settings_final.png")
+        print("Screenshot taken: verification/settings_final.png")
 
-    # Take screenshot of the reset modal with input filled
-    page.screenshot(path="verification/reset_modal_filled.png")
+        # 2. Go to Add Coin
+        print("Navigating to Add Coin...")
+        page.goto("http://localhost:5173/#/add")
+        page.wait_for_selector("text=Añadir Moneda")
 
-    # Close modal
-    page.click("text=Cancelar")
+        # Take screenshot of Add Coin
+        page.screenshot(path="verification/add_coin_final.png")
+        print("Screenshot taken: verification/add_coin_final.png")
 
-    # Simulate export (will be quick for empty DB)
-    page.click("button:has-text('Exportar')")
-    # Wait for success message (might need retry logic if it's too fast, but let's try)
-    try:
-        page.wait_for_selector("text=Base de datos exportada", timeout=5000)
-    except:
-        print("Export success message missed or not appeared")
+        browser.close()
 
-    # Take final screenshot of settings page
-    page.screenshot(path="verification/settings_final.png")
-
-with sync_playwright() as p:
-    browser = p.chromium.launch()
-    page = browser.new_page()
-    verify_data_management_ui(page)
-    browser.close()
+if __name__ == "__main__":
+    verify_ui_changes()
