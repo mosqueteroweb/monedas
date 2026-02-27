@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { ArrowLeft, Trash2, DollarSign, RefreshCw } from 'lucide-react';
-import { estimateValue } from '../utils/gemini';
+import { estimateValue } from '../utils/aiModel.js';
 
 export default function CoinDetail() {
   const { id } = useParams();

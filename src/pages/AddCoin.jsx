@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Camera, ArrowLeft, ArrowRight, Save, Loader, Scissors } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
-import { identifyCoin, detectCoinBoundingBox } from '../utils/gemini';
+import { identifyCoin, detectCoinBoundingBox } from '../utils/aiModel.js';
 import { cropImage } from '../utils/imageProcessing';
 import { db } from '../db';
 
