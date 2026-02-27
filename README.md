@@ -30,40 +30,37 @@ A continuación se detalla el historial de cambios, Pull Requests y planes ejecu
 - **Cambios:**
     - Se actualizó `src/utils/gemini.js` para usar `gemini-1.5-pro`, el modelo más inteligente disponible en la capa gratuita de Google AI Studio.
 
-### 4. Fix: Problemas de Caché PWA y Cambio a Gemini 2.0 Flash (v1.0.1)
-**Problema:** La aplicación en móviles seguía usando la versión antigua (modelo 1.5) debido al Service Worker, a pesar de los cambios en el código.
-- **Plan:** Forzar la actualización del Service Worker y probar un modelo más rápido.
-- **Cambios:**
-    - Configuración de `vite-plugin-pwa`: `registerType: 'autoUpdate'`, `skipWaiting: true`, `clientsClaim: true`.
-    - Se cambió temporalmente a `gemini-2.0-flash` como intento de mejora.
-    - Se añadió un indicador de versión en `Settings.jsx` (v1.0.1) para depuración.
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-### 5. Configuración de Modelo Específico: Gemini 3 Flash (v1.0.2)
-**Solicitud:** El usuario solicitó explícitamente usar `gemini-3-flash`.
-- **Cambios:**
-    - Actualización de la llamada a la API en `gemini.js` para usar el identificador `gemini-3-flash`.
-    - Actualización del indicador de versión a v1.0.2.
+## Changelog
 
-### 6. Configuración de Modelo Específico: Gemini 3.1 Flash Image Preview (v1.0.3)
-**Solicitud:** El usuario encontró y solicitó usar el modelo `gemini-3.1-flash-image-preview`.
-- **Cambios:**
-    - Actualización de `gemini.js` al nuevo identificador de modelo.
-    - Actualización del indicador de versión a v1.0.3.
+### 2025-05-18 - Feature: Data Management (Export/Import/Reset)
 
-### 7. Configuración de Modelo Específico: Gemini 3 Flash Preview (v1.0.4)
-**Solicitud:** El usuario solicitó usar `gemini-3-flash-preview` por tener "más tokens".
-- **Cambios:**
-    - Actualización final de `gemini.js` al modelo `gemini-3-flash-preview`.
-    - Actualización del indicador de versión a v1.0.4.
+**Description:**
+Implemented functionality to export the entire coin database (including images) to a compressed ZIP file, import data from ZIP backups with deduplication, and reset the database with a safety confirmation.
 
----
+**Plan:**
+1.  **Created `src/utils/dataUtils.js`:**
+    *   Implemented `exportDatabase` using `jszip` to create a ZIP containing JSON data and Base64-encoded images.
+    *   Implemented `importDatabase` to parse the ZIP, extract data, and insert new records into Dexie.js.
+    *   Implemented deduplication logic using a new `uuid` field to avoid importing existing coins.
+    *   Implemented `clearDatabase` for resetting data.
+    *   Added progress reporting callback for long-running operations.
 
-## Cómo Ejecutar Localmente
+2.  **Updated `src/db.js`:**
+    *   Updated database version to 2.
+    *   Added `uuid` field to the schema as a unique index.
+    *   Added migration script to backfill `uuid` for existing records using `crypto.randomUUID()`.
 
-1. Clonar el repositorio.
-2. `npm install`
-3. `npm run dev`
+3.  **Updated `src/pages/Settings.jsx`:**
+    *   Added "Gestión de Datos" section.
+    *   Added buttons for "Exportar", "Importar", and "Restablecer Base de Datos".
+    *   Implemented `isLoading` state and progress bar for export/import actions.
+    *   Created a custom confirmation modal for the reset action, requiring the user to type "Borrar".
 
-## Cómo Desplegar
+4.  **Refactoring & Fixes:**
+    *   Fixed linting issue in `src/utils/gemini.js` (unused variable).
+    *   Fixed `useEffect` dependency and state update issue in `src/components/CoinCard.jsx`.
 
-El despliegue es automático mediante GitHub Actions al hacer push a la rama `main`. Asegúrate de que en la configuración del repositorio > Pages, la fuente esté configurada como "GitHub Actions".
+**PR Title:** Add data export/import with compression and deduplication
+**PR Description:** This PR introduces comprehensive data management features to the Settings page. Users can now export their entire coin collection (including images) into a compressed ZIP file. The import functionality allows restoring these backups while automatically preventing duplicates using a new unique `uuid` field added to the database schema. Additionally, a "Reset Database" option is provided with a safety confirmation modal requiring the user to type "Borrar". Progress indicators have been added to enhance the user experience during long-running operations.
