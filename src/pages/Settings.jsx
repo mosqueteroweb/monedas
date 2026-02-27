@@ -14,19 +14,19 @@ export default function Settings() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const key = localStorage.getItem('GEMINI_API_KEY');
+    const key = localStorage.getItem('GITHUB_TOKEN');
     if (key) setApiKey(key);
   }, []);
 
   const handleSave = (e) => {
     e.preventDefault();
     if (apiKey.trim()) {
-      localStorage.setItem('GEMINI_API_KEY', apiKey.trim());
-      setStatus('Clave guardada correctamente.');
+      localStorage.setItem('GITHUB_TOKEN', apiKey.trim());
+      setStatus('Token guardado correctamente.');
       setTimeout(() => setStatus(''), 3000);
     } else {
-      localStorage.removeItem('GEMINI_API_KEY');
-      setStatus('Clave eliminada.');
+      localStorage.removeItem('GITHUB_TOKEN');
+      setStatus('Token eliminado.');
       setTimeout(() => setStatus(''), 3000);
     }
   };
@@ -105,15 +105,15 @@ export default function Settings() {
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-start gap-3">
             <AlertCircle className="flex-shrink-0 mt-0.5" size={18} />
             <p>
-              Tu clave API de Google Gemini se guardará únicamente en el almacenamiento local de tu navegador.
-              No se enviará a ningún servidor excepto a Google para procesar las imágenes.
+              Tu GitHub Personal Access Token se guardará únicamente en el almacenamiento local de tu navegador.
+              No se enviará a ningún servidor excepto a GitHub Models para procesar las imágenes.
             </p>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div>
               <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-1">
-                Google Gemini API Key
+                GitHub Personal Access Token
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -124,12 +124,12 @@ export default function Settings() {
                   id="apiKey"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Pegar API Key aquí..."
+                  placeholder="Pegar GitHub Token aquí..."
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-shadow"
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                Obtén tu clave en <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>.
+                Obtén tu token en <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">GitHub Settings</a>.
               </p>
             </div>
 
@@ -208,7 +208,7 @@ export default function Settings() {
       </div>
 
       <div className="mt-8 text-center text-xs text-gray-400">
-        v1.0.4 (Gemini 3 Flash Preview)
+        v1.1.0 (GitHub Models - Llama 3.2 Vision)
       </div>
 
       {/* Reset Confirmation Modal */}
