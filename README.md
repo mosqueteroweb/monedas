@@ -64,3 +64,21 @@ Implemented functionality to export the entire coin database (including images) 
 
 **PR Title:** Add data export/import with compression and deduplication
 **PR Description:** This PR introduces comprehensive data management features to the Settings page. Users can now export their entire coin collection (including images) into a compressed ZIP file. The import functionality allows restoring these backups while automatically preventing duplicates using a new unique `uuid` field added to the database schema. Additionally, a "Reset Database" option is provided with a safety confirmation modal requiring the user to type "Borrar". Progress indicators have been added to enhance the user experience during long-running operations.
+
+### 2025-05-18 - Feature: Auto-crop coin images using AI detection
+
+**Description:**
+Enhanced the coin addition process by leveraging Gemini API to automatically detect the coin's bounding box and cropping the image to focus on the coin, reducing storage size.
+
+**Plan:**
+1.  **Modified `src/utils/gemini.js`:**
+    *   Added `detectCoinBoundingBox` function to request normalized bounding box coordinates from the Gemini API.
+    *   Updated API calls to use the `gemma-3-27b-it` model as requested.
+2.  **Created `src/utils/imageProcessing.js`:**
+    *   Implemented `cropImage` utility to crop image blobs based on normalized bounding box coordinates using HTML5 Canvas.
+3.  **Updated `src/pages/AddCoin.jsx`:**
+    *   Integrated detection and cropping steps into the coin analysis workflow.
+    *   Added UI feedback ("Procesando Imágenes...") during the auto-crop process.
+
+**PR Title:** Auto-crop coin images using AI detection
+**PR Description:** This PR enhances the coin addition process by automatically detecting and cropping the coin image. It leverages the Gemini API to identify the bounding box of the coin within the captured photo. A new `cropImage` utility then processes the image client-side to remove the background, reducing storage size and focusing on the coin itself. The UI in `AddCoin.jsx` has been updated to show the processing status during this operation.

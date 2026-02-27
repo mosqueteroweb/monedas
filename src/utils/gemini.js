@@ -79,13 +79,10 @@ export async function detectCoinBoundingBox(imageBlob) {
     Responde ÚNICAMENTE con el array JSON: [ymin, xmin, ymax, xmax]
   `;
 
-  // Create a separate call logic for bounding box if needed, or reuse callGemini
-  // Note: asking for JSON array [ymin, xmin, ymax, xmax]
-
   try {
     const resultText = await callGemini(apiKey, prompt, [
       { mime_type: imageBlob.type, data: base64 }
-    ], "application/json"); // Gemini 1.5/Flash supports JSON schema or implicit JSON structure
+    ], "application/json");
 
     const result = JSON.parse(resultText);
     if (Array.isArray(result) && result.length === 4) {
@@ -117,7 +114,9 @@ async function callGemini(apiKey, prompt, images, mimeType = "application/json")
     }
   };
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  // Using the requested model: gemma-3-27b-it
+  // Note: If this model is not available in the API, users will need to revert or update their key permissions.
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
