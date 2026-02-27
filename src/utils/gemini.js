@@ -15,22 +15,16 @@ export async function identifyCoin(frontBlob, backBlob) {
     - denomination: Denominación (ej: "1 Euro", "5 Pesetas").
     - mintMark: Ceca o marca de acuñación (si visible, sino null).
 
-    Responde ÚNICAMENTE con el objeto JSON.
+    Responde ÚNICAMENTE con el objeto JSON. No incluyas bloques de código markdown.
   `;
 
-  const result = await callGemini(apiKey, prompt, [
+  // Removed "application/json" mimeType request as Gemma 3 27b IT might not support it natively via API yet
+  const resultText = await callGemini(apiKey, prompt, [
     { mime_type: frontBlob.type, data: frontBase64 },
     { mime_type: backBlob.type, data: backBase64 }
-  ], "application/json");
+  ]);
 
-  try {
-    return JSON.parse(result);
-  } catch (e) {
-    console.error("Error parsing JSON", result);
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    throw new Error("Formato de respuesta inválido de la IA");
-  }
+  return parseJSONResponse(resultText);
 }
 
 export async function estimateValue(coin) {
@@ -57,14 +51,45 @@ export async function estimateValue(coin) {
   const result = await callGemini(apiKey, prompt, [
     { mime_type: coin.frontImage.type, data: frontBase64 },
     { mime_type: coin.backImage.type, data: backBase64 }
-  ], "text/plain");
+  ]);
 
   // Clean up result just in case
   const value = parseFloat(result.trim().replace(/[^0-9.]/g, ''));
   return isNaN(value) ? 0 : value;
 }
 
-async function callGemini(apiKey, prompt, images, mimeType = "application/json") {
+export async function detectCoinBoundingBox(imageBlob) {
+  const apiKey = localStorage.getItem('GEMINI_API_KEY');
+  if (!apiKey) return null; // Can't detect without API Key
+
+  const base64 = await blobToBase64(imageBlob);
+
+  const prompt = `
+    Detecta la moneda en esta imagen y dame las coordenadas de la caja delimitadora (bounding box) en formato [ymin, xmin, ymax, xmax].
+    Los valores deben estar normalizados entre 0 y 1.
+    Si hay más de una moneda, detecta la más prominente.
+    Si no hay moneda, responde null.
+
+    Responde ÚNICAMENTE con el array JSON: [ymin, xmin, ymax, xmax]. No uses markdown.
+  `;
+
+  try {
+    const resultText = await callGemini(apiKey, prompt, [
+      { mime_type: imageBlob.type, data: base64 }
+    ]);
+
+    const result = parseJSONResponse(resultText);
+    if (Array.isArray(result) && result.length === 4) {
+        return result;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Error detecting bounding box:", error);
+    return null; // Fail gracefully
+  }
+}
+
+async function callGemini(apiKey, prompt, images) {
   const parts = [{ text: prompt }];
 
   images.forEach(img => {
@@ -76,14 +101,12 @@ async function callGemini(apiKey, prompt, images, mimeType = "application/json")
     });
   });
 
+  // Removed generationConfig.response_mime_type since Gemma 3 might not support JSON mode
   const body = {
-    contents: [{ parts }],
-    generationConfig: {
-      response_mime_type: mimeType
-    }
+    contents: [{ parts }]
   };
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -101,6 +124,30 @@ async function callGemini(apiKey, prompt, images, mimeType = "application/json")
   }
 
   return data.candidates[0].content.parts[0].text;
+}
+
+function parseJSONResponse(text) {
+  try {
+    // Try parsing directly
+    return JSON.parse(text);
+  } catch {
+    // Try extracting from markdown code blocks
+    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1]);
+      } catch {
+         // Fallback: try finding just the object/array
+         const objectMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+         if (objectMatch) return JSON.parse(objectMatch[0]);
+      }
+    }
+    // Last ditch: just find { ... } or [ ... ]
+    const objectMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (objectMatch) return JSON.parse(objectMatch[0]);
+
+    throw new Error("No se pudo extraer JSON de la respuesta: " + text.substring(0, 50) + "...");
+  }
 }
 
 function blobToBase64(blob) {
