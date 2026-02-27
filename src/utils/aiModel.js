@@ -18,7 +18,7 @@ export async function identifyCoin(frontBlob, backBlob) {
     - denomination: Denomination (e.g., "1 Euro", "5 Pesetas").
     - mintMark: Mint mark (if visible, otherwise null).
 
-    Respond ONLY with the JSON object. Do not include markdown code blocks.
+    Respond ONLY with the raw JSON object. Do not include markdown code blocks, explanations, or any other text.
   `;
 
   const resultText = await callGitHubModel(apiKey, prompt, [
@@ -107,6 +107,10 @@ export async function detectCoinBoundingBox(imageBlob) {
 async function callGitHubModel(apiKey, prompt, images) {
   const messages = [
     {
+      role: "system",
+      content: "You are a precise JSON generator. Output only valid JSON. Do not output markdown or conversational text."
+    },
+    {
       role: "user",
       content: [
         { type: "text", text: prompt },
@@ -152,21 +156,42 @@ async function callGitHubModel(apiKey, prompt, images) {
 
 function parseJSONResponse(text) {
   try {
+    // 1. Try direct parse
     return JSON.parse(text);
-  } catch {
+  } catch (e1) {
+    // 2. Try extracting from markdown code blocks
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       try {
         return JSON.parse(jsonMatch[1]);
-      } catch {
-         const objectMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-         if (objectMatch) return JSON.parse(objectMatch[0]);
+      } catch (e2) {
+        // failed
       }
     }
-    const objectMatch = text.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-    if (objectMatch) return JSON.parse(objectMatch[0]);
 
-    throw new Error("Could not extract JSON from response: " + text.substring(0, 50) + "...");
+    // 3. Try finding the first { and last } (for objects)
+    const firstOpenBrace = text.indexOf('{');
+    const lastCloseBrace = text.lastIndexOf('}');
+    if (firstOpenBrace !== -1 && lastCloseBrace !== -1 && lastCloseBrace > firstOpenBrace) {
+        try {
+            return JSON.parse(text.substring(firstOpenBrace, lastCloseBrace + 1));
+        } catch (e3) {
+            // failed
+        }
+    }
+
+    // 4. Try finding the first [ and last ] (for arrays)
+    const firstOpenBracket = text.indexOf('[');
+    const lastCloseBracket = text.lastIndexOf(']');
+    if (firstOpenBracket !== -1 && lastCloseBracket !== -1 && lastCloseBracket > firstOpenBracket) {
+        try {
+            return JSON.parse(text.substring(firstOpenBracket, lastCloseBracket + 1));
+        } catch (e4) {
+            // failed
+        }
+    }
+
+    throw new Error("Could not extract JSON from response: " + text.substring(0, 100) + "...");
   }
 }
 
