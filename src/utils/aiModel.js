@@ -68,12 +68,15 @@ export async function detectCoinBoundingBox(imageBlob) {
   // We will ask for normalized 0-1 coordinates explicitly.
   const prompt = `
     Detect the coin in this image.
-    Provide the bounding box coordinates as [ymin, xmin, ymax, xmax].
-    The values must be normalized between 0 and 1 (float).
+    Provide the bounding box coordinates strictly in this order: [ymin, xmin, ymax, xmax].
+
+    If the model uses a 0-1000 scale, return integers (e.g., [250, 250, 750, 750]).
+    If the model uses a 0-1 scale, return floats (e.g., [0.25, 0.25, 0.75, 0.75]).
+
     If there is more than one coin, detect the most prominent one.
     If no coin is detected, respond null.
 
-    Respond ONLY with the JSON array: [ymin, xmin, ymax, xmax]. Do not use markdown.
+    Respond ONLY with the JSON array. Do not use markdown.
   `;
 
   try {
@@ -83,8 +86,16 @@ export async function detectCoinBoundingBox(imageBlob) {
 
     const result = parseJSONResponse(resultText);
     if (Array.isArray(result) && result.length === 4) {
-        // Validate and clamp just in case
-        return result.map(coord => Math.max(0, Math.min(1, parseFloat(coord))));
+        // Check if any coordinate is > 1, implying 0-1000 scale (common in Llama models)
+        const is1000Scale = result.some(coord => parseFloat(coord) > 1);
+
+        return result.map(coord => {
+          let val = parseFloat(coord);
+          if (is1000Scale) {
+            val = val / 1000;
+          }
+          return Math.max(0, Math.min(1, val));
+        });
     }
     return null;
   } catch (error) {
