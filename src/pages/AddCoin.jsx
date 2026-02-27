@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { Camera, ArrowLeft, ArrowRight, Save, Loader, Scissors } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
-import { identifyCoin, detectCoinBoundingBox } from '../utils/gemini';
-import { cropImage } from '../utils/imageProcessing';
+import { identifyCoin } from '../utils/aiModel.js';
 import { db } from '../db';
+import CropModal from '../components/CropModal';
 
 export default function AddCoin() {
   const navigate = useNavigate();
-  const [step, setStep] = useState('capture'); // capture, processing_crop, analyzing, verify
+  const [step, setStep] = useState('capture'); // capture, analyzing, verify
   const [frontImage, setFrontImage] = useState(null);
   const [backImage, setBackImage] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [cropStatus, setCropStatus] = useState('');
+
+  // Cropping State
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null); // The raw image to be cropped
+  const [cropType, setCropType] = useState(null); // 'front' or 'back'
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -26,57 +30,55 @@ export default function AddCoin() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Reset the input value so the same file can be selected again if needed
+    e.target.value = '';
+
     setProcessing(true);
     try {
+      // 1. Compress initially (optional, but good for performance before crop)
       const compressedBlob = await compressImage(file);
-      if (type === 'front') {
-        setFrontImage(compressedBlob);
-      } else {
-        setBackImage(compressedBlob);
-      }
+
+      // 2. Open Crop Modal
+      const imageUrl = URL.createObjectURL(compressedBlob);
+      setImageToCrop(imageUrl);
+      setCropType(type);
+      setCropModalOpen(true);
+
     } catch (error) {
-      console.error('Error compressing image:', error);
+      console.error('Error preparing image for crop:', error);
       alert('Error al procesar la imagen.');
     } finally {
       setProcessing(false);
     }
   };
 
+  const handleCropSave = async (croppedBlob) => {
+    if (cropType === 'front') {
+      setFrontImage(croppedBlob);
+    } else {
+      setBackImage(croppedBlob);
+    }
+
+    // Cleanup
+    setCropModalOpen(false);
+    setImageToCrop(null);
+    setCropType(null);
+  };
+
+  const handleCropCancel = () => {
+    setCropModalOpen(false);
+    setImageToCrop(null);
+    setCropType(null);
+  };
+
   const handleAnalyze = async () => {
     if (!frontImage || !backImage) return;
 
-    // Step 1: Detect and Crop
-    setStep('processing_crop');
-    let finalFront = frontImage;
-    let finalBack = backImage;
-
-    try {
-      setCropStatus('Detectando moneda en anverso...');
-      const frontBBox = await detectCoinBoundingBox(frontImage);
-      if (frontBBox) {
-        setCropStatus('Recortando anverso...');
-        finalFront = await cropImage(frontImage, frontBBox);
-        setFrontImage(finalFront); // Update state with cropped image
-      }
-
-      setCropStatus('Detectando moneda en reverso...');
-      const backBBox = await detectCoinBoundingBox(backImage);
-      if (backBBox) {
-        setCropStatus('Recortando reverso...');
-        finalBack = await cropImage(backImage, backBBox);
-        setBackImage(finalBack); // Update state with cropped image
-      }
-    } catch (cropError) {
-      console.warn("Error during auto-crop:", cropError);
-      // Continue with original images if cropping fails
-    }
-
-    // Step 2: Analyze Data
     setStep('analyzing');
-    setCropStatus('');
 
     try {
-      const data = await identifyCoin(finalFront, finalBack);
+      // Direct analysis of the already cropped images
+      const data = await identifyCoin(frontImage, backImage);
       setFormData({
         country: data.country || '',
         year: data.year || '',
@@ -112,16 +114,6 @@ export default function AddCoin() {
     }
   };
 
-  if (step === 'processing_crop') {
-    return (
-      <div className="flex flex-col items-center justify-center h-[80vh] text-center p-6">
-        <Scissors className="animate-bounce text-blue-600 mb-4" size={48} />
-        <h2 className="text-xl font-bold text-gray-800">Procesando Imágenes...</h2>
-        <p className="text-gray-500 mt-2">{cropStatus || 'Optimizando recortes...'}</p>
-      </div>
-    );
-  }
-
   if (step === 'analyzing') {
     return (
       <div className="flex flex-col items-center justify-center h-[80vh] text-center p-6">
@@ -150,10 +142,6 @@ export default function AddCoin() {
              <img src={URL.createObjectURL(backImage)} className="w-full h-full object-contain" alt="Reverso" />
           </div>
         </div>
-
-        <p className="text-xs text-center text-gray-500 mb-4 flex items-center justify-center gap-1">
-          <Scissors size={12} /> Imágenes recortadas automáticamente
-        </p>
 
         <form onSubmit={handleSave} className="space-y-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div>
@@ -214,6 +202,16 @@ export default function AddCoin() {
   // Step: capture
   return (
     <div className="pb-24 max-w-lg mx-auto">
+      {/* Crop Modal */}
+      {cropModalOpen && imageToCrop && (
+        <CropModal
+          image={imageToCrop}
+          onCancel={handleCropCancel}
+          onSave={handleCropSave}
+          title={cropType === 'front' ? 'Recortar Anverso' : 'Recortar Reverso'}
+        />
+      )}
+
       <div className="flex items-center mb-6">
         <Link to="/" className="mr-4 p-2 rounded-full hover:bg-gray-100 text-gray-600">
           <ArrowLeft size={24} />
