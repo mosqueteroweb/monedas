@@ -1,4 +1,4 @@
-import { stitchImages } from './imageProcessing';
+import { stitchImages } from './imageProcessing.js';
 
 export async function identifyCoin(frontBlob, backBlob) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
@@ -12,6 +12,13 @@ export async function identifyCoin(frontBlob, backBlob) {
 
   const prompt = `
     Analyze this image containing the front and back of a coin.
+    PERFORM OCR TO READ ALL VISIBLE TEXT.
+
+    - Look closely for the YEAR of minting. It is usually a 4-digit number (e.g., 1999, 2023). sometimes it is small.
+    - Look for the MINT MARK (CECA). It is often a single letter (M, A, P, S) or a small symbol/monogram near the year or denomination.
+    - Look for the COUNTRY name or text indicating the issuer.
+    - Look for the DENOMINATION (value).
+
     Extract the following information strictly in JSON format:
     - country: Country of origin (in Spanish).
     - year: Year of minting (number or null if not visible).
@@ -64,19 +71,23 @@ export async function detectCoinBoundingBox(imageBlob) {
 
   const base64 = await blobToBase64(imageBlob);
 
-  // Llama 3.2 Vision often outputs bounding boxes in [ymin, xmin, ymax, xmax] format normalized 0-1000.
-  // We will ask for normalized 0-1 coordinates explicitly.
+  // We request specific named coordinates to avoid ambiguity between [x,y] vs [y,x] order.
+  // We also explicitly request the 0-1000 scale which is standard for Llama 3.2 Vision.
   const prompt = `
-    Detect the coin in this image.
-    Provide the bounding box coordinates strictly in this order: [ymin, xmin, ymax, xmax].
+    Analyze this image and find the bounding box of the single most prominent coin.
 
-    If the model uses a 0-1000 scale, return integers (e.g., [250, 250, 750, 750]).
-    If the model uses a 0-1 scale, return floats (e.g., [0.25, 0.25, 0.75, 0.75]).
+    Return a JSON object with the following keys:
+    - "ymin": Top edge of the box (0-1000)
+    - "xmin": Left edge of the box (0-1000)
+    - "ymax": Bottom edge of the box (0-1000)
+    - "xmax": Right edge of the box (0-1000)
 
-    If there is more than one coin, detect the most prominent one.
-    If no coin is detected, respond null.
+    The coordinates must be integers between 0 and 1000, representing the position relative to the image dimensions.
 
-    Respond ONLY with the JSON array. Do not use markdown.
+    Example: {"ymin": 100, "xmin": 200, "ymax": 900, "xmax": 800}
+
+    If no coin is detected, return null.
+    Respond ONLY with the JSON object. Do not use markdown.
   `;
 
   try {
@@ -85,17 +96,32 @@ export async function detectCoinBoundingBox(imageBlob) {
     ]);
 
     const result = parseJSONResponse(resultText);
-    if (Array.isArray(result) && result.length === 4) {
-        // Check if any coordinate is > 1, implying 0-1000 scale (common in Llama models)
-        const is1000Scale = result.some(coord => parseFloat(coord) > 1);
 
-        return result.map(coord => {
-          let val = parseFloat(coord);
-          if (is1000Scale) {
-            val = val / 1000;
-          }
-          return Math.max(0, Math.min(1, val));
-        });
+    if (result && typeof result === 'object') {
+        // Extract values, defaulting to null if missing
+        let { ymin, xmin, ymax, xmax } = result;
+
+        // If for some reason the model returns an array despite instructions (fallback)
+        if (Array.isArray(result) && result.length === 4) {
+            [ymin, xmin, ymax, xmax] = result;
+        }
+
+        if (ymin !== undefined && xmin !== undefined && ymax !== undefined && xmax !== undefined) {
+             // Check scale. If any value > 1, it's 0-1000.
+             const values = [ymin, xmin, ymax, xmax].map(v => parseFloat(v));
+             const is1000Scale = values.some(v => v > 1);
+
+             const normalized = values.map(v => {
+                 let val = v;
+                 if (is1000Scale) val /= 1000;
+                 return Math.max(0, Math.min(1, val));
+             });
+
+             // Ensure order [ymin, xmin, ymax, xmax]
+             // Llama sometimes confuses x and y, but with named keys it's usually correct.
+             // We return [ymin, xmin, ymax, xmax]
+             return normalized;
+        }
     }
     return null;
   } catch (error) {
@@ -158,13 +184,13 @@ function parseJSONResponse(text) {
   try {
     // 1. Try direct parse
     return JSON.parse(text);
-  } catch (e1) {
+  } catch {
     // 2. Try extracting from markdown code blocks
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       try {
         return JSON.parse(jsonMatch[1]);
-      } catch (e2) {
+      } catch {
         // failed
       }
     }
@@ -175,7 +201,7 @@ function parseJSONResponse(text) {
     if (firstOpenBrace !== -1 && lastCloseBrace !== -1 && lastCloseBrace > firstOpenBrace) {
         try {
             return JSON.parse(text.substring(firstOpenBrace, lastCloseBrace + 1));
-        } catch (e3) {
+        } catch {
             // failed
         }
     }
@@ -186,7 +212,7 @@ function parseJSONResponse(text) {
     if (firstOpenBracket !== -1 && lastCloseBracket !== -1 && lastCloseBracket > firstOpenBracket) {
         try {
             return JSON.parse(text.substring(firstOpenBracket, lastCloseBracket + 1));
-        } catch (e4) {
+        } catch {
             // failed
         }
     }
