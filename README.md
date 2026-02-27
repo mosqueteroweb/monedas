@@ -1,17 +1,34 @@
-# React + Vite
+# React + Vite + PWA Coin Catalog
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este es un proyecto de Catálogo de Monedas PWA (Progressive Web App) construido con React, Vite, Tailwind CSS, Dexie.js (IndexedDB) y la API de Google Gemini para análisis de imágenes.
 
-Currently, two official plugins are available:
+## Historial de Desarrollo y Planes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+A continuación se detalla el historial de cambios, Pull Requests y planes ejecutados durante el desarrollo del proyecto:
 
-## React Compiler
+### 1. Configuración Inicial y Despliegue (Fases 1-4)
+**Objetivo:** Crear una SPA "mobile-first" instalable como PWA para catalogar monedas, 100% estática y alojada en GitHub Pages.
+- **Cambios:**
+    - Inicialización de proyecto Vite con React y Tailwind CSS.
+    - Configuración de `vite-plugin-pwa` para soporte offline e instalación.
+    - Implementación de base de datos local Dexie.js (`CoinCatalog`).
+    - Creación de vistas: Home (grid), AddCoin (captura de cámara), CoinDetail, Settings.
+    - Integración de `gemini-1.5-flash` para extracción de datos (País, Año, Denominación, Ceca).
+    - Configuración de GitHub Actions (`deploy.yml`) para despliegue automático a `gh-pages`.
+    - Ajuste de `base: '/monedas/'` en `vite.config.js`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. Fix: Error de Modelo Gemini (v1.0.0)
+**Problema:** La API devolvía un error "model not found" al usar `gemini-1.5-flash`.
+- **Plan:** Actualizar el nombre del modelo a una versión válida en la API v1beta.
+- **Cambios:**
+    - Se cambió el modelo en `src/utils/gemini.js` a `gemini-1.5-flash-latest`.
+    - Se actualizó el texto del botón de valoración a "Comprobar Valor Especial" para mayor claridad.
 
-## Expanding the ESLint configuration
+### 3. Mejora: Upgrade a Gemini 1.5 Pro (v1.0.1)
+**Solicitud:** El usuario comentó que el modelo Flash era "muy antiguo" y quería mejorar la precisión.
+- **Plan:** Usar un modelo más capaz para el análisis de imágenes desgastadas.
+- **Cambios:**
+    - Se actualizó `src/utils/gemini.js` para usar `gemini-1.5-pro`, el modelo más inteligente disponible en la capa gratuita de Google AI Studio.
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 

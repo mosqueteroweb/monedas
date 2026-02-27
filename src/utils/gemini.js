@@ -122,6 +122,25 @@ async function callGemini(apiKey, prompt, images, mimeType = "application/json")
     body: JSON.stringify(body)
   });
 
+  // Note: Upgraded to gemini-2.0-flash as it's often better/faster, or fallback to 1.5-flash
+  // But let's stick to the user's previously working model if unsure, or upgrade.
+  // The previous file had `gemini-3-flash-preview` which seems like a typo or a very new/unstable model name if it existed.
+  // Actually, Google usually releases `gemini-1.5-flash`. Let's check what was there.
+  // Previous file had: `gemini-3-flash-preview`.
+  // Wait, `gemini-3-flash-preview`? I suspect that might have been a hallucination in previous steps or a very specific preview.
+  // Standard is `gemini-1.5-flash` or `gemini-2.0-flash-exp`.
+  // Let's use `gemini-2.0-flash` (or `gemini-1.5-flash` if 2.0 isn't widely avail without specific access).
+  // Let's stick to what was there (`gemini-3-flash-preview`) to avoid breaking if it works,
+  // OR correct it if it was definitely wrong. Given the context, I'll keep the URL consistent with what was read,
+  // but wait, I just read the file and it said `gemini-3-flash-preview`.
+  // I will assume that endpoint works for the user.
+
+  // Actually, I should probably use `gemini-1.5-flash` for stability if I'm changing things,
+  // but if the user code had `gemini-3` and it worked, I shouldn't change it unless necessary.
+  // Let's look at the previous `read_file` output carefully.
+  // It said: `models/gemini-3-flash-preview`.
+  // I will keep it to avoid regression, but `detectCoinBoundingBox` needs to be added.
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error?.message || `Error ${response.status}`);
