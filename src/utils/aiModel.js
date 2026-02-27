@@ -1,14 +1,17 @@
+import { stitchImages } from './imageProcessing';
+
 export async function identifyCoin(frontBlob, backBlob) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
   if (!apiKey) {
     throw new Error('GitHub Token no configurado. Ve a Ajustes.');
   }
 
-  const frontBase64 = await blobToBase64(frontBlob);
-  const backBase64 = await blobToBase64(backBlob);
+  // Stitch images to bypass 1-image limit
+  const stitchedBlob = await stitchImages(frontBlob, backBlob);
+  const stitchedBase64 = await blobToBase64(stitchedBlob);
 
   const prompt = `
-    Analyze these two images of a coin (front and back).
+    Analyze this image containing the front and back of a coin.
     Extract the following information strictly in JSON format:
     - country: Country of origin (in Spanish).
     - year: Year of minting (number or null if not visible).
@@ -19,8 +22,7 @@ export async function identifyCoin(frontBlob, backBlob) {
   `;
 
   const resultText = await callGitHubModel(apiKey, prompt, [
-    { type: frontBlob.type, data: frontBase64 },
-    { type: backBlob.type, data: backBase64 }
+    { type: stitchedBlob.type, data: stitchedBase64 }
   ]);
 
   return parseJSONResponse(resultText);
@@ -30,11 +32,12 @@ export async function estimateValue(coin) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
   if (!apiKey) throw new Error('GitHub Token no configurado.');
 
-  const frontBase64 = await blobToBase64(coin.frontImage);
-  const backBase64 = await blobToBase64(coin.backImage);
+  // Stitch images to bypass 1-image limit
+  const stitchedBlob = await stitchImages(coin.frontImage, coin.backImage);
+  const stitchedBase64 = await blobToBase64(stitchedBlob);
 
   const prompt = `
-    Act as an expert numismatist. Value this coin:
+    Act as an expert numismatist. Value this coin (image shows front and back):
     - Country: ${coin.country}
     - Year: ${coin.year}
     - Denomination: ${coin.denomination}
@@ -48,8 +51,7 @@ export async function estimateValue(coin) {
   `;
 
   const result = await callGitHubModel(apiKey, prompt, [
-    { type: coin.frontImage.type, data: frontBase64 },
-    { type: coin.backImage.type, data: backBase64 }
+    { type: stitchedBlob.type, data: stitchedBase64 }
   ]);
 
   const value = parseFloat(result.trim().replace(/[^0-9.]/g, ''));
