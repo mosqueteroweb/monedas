@@ -74,6 +74,7 @@ Enhanced the coin addition process by leveraging Gemini API to automatically det
 1.  **Modified `src/utils/gemini.js`:**
     *   Added `detectCoinBoundingBox` function to request normalized bounding box coordinates from the Gemini API.
     *   Updated API calls to use the `gemma-3-27b-it` model as requested.
+    *   Fixed compatibility issue with Gemma 3 27B IT model by disabling strict JSON mode and implementing robust manual JSON parsing from text responses.
 2.  **Created `src/utils/imageProcessing.js`:**
     *   Implemented `cropImage` utility to crop image blobs based on normalized bounding box coordinates using HTML5 Canvas.
 3.  **Updated `src/pages/AddCoin.jsx`:**
@@ -81,4 +82,4 @@ Enhanced the coin addition process by leveraging Gemini API to automatically det
     *   Added UI feedback ("Procesando Imágenes...") during the auto-crop process.
 
 **PR Title:** Auto-crop coin images using AI detection
-**PR Description:** This PR enhances the coin addition process by automatically detecting and cropping the coin image. It leverages the Gemini API to identify the bounding box of the coin within the captured photo. A new `cropImage` utility then processes the image client-side to remove the background, reducing storage size and focusing on the coin itself. The UI in `AddCoin.jsx` has been updated to show the processing status during this operation.
+**PR Description:** This PR enhances the coin addition process by automatically detecting and cropping the coin image. It leverages the Gemini API to identify the bounding box of the coin within the captured photo. A new `cropImage` utility then processes the image client-side to remove the background, reducing storage size and focusing on the coin itself. The UI in `AddCoin.jsx` has been updated to show the processing status during this operation. The backend model has been updated to `gemma-3-27b-it` with enhanced JSON parsing compatibility.
