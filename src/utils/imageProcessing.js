@@ -104,10 +104,12 @@ export async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
   // return canvas.toDataURL('image/jpeg');
 
   // As a blob
+  // Use image/png instead of image/jpeg. PNG is lossless, which prevents artifacting
+  // on extremely small text (like mint marks and years inside stars on coins).
   return new Promise((resolve) => {
     canvas.toBlob((file) => {
       resolve(file);
-    }, 'image/jpeg');
+    }, 'image/png');
   });
 }
 
