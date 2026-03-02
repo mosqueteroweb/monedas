@@ -235,7 +235,14 @@ export default function AddCoin() {
         <h2 className="text-xl font-bold text-gray-800">Añadir Moneda</h2>
       </div>
 
-      <div className="space-y-6">
+      {processing && !cropModalOpen && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center gap-3 text-blue-700 animate-pulse">
+          <Loader className="animate-spin" size={24} />
+          <span className="font-medium">Detectando bordes de la moneda...</span>
+        </div>
+      )}
+
+      <div className={`space-y-6 ${processing && !cropModalOpen ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* Front Image */}
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
           <h3 className="font-semibold mb-3 text-gray-700 flex items-center gap-2">
