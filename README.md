@@ -32,7 +32,23 @@ A continuación se detalla el historial de cambios, Pull Requests y planes ejecu
 
 ## Changelog
 
-### 2025-05-18 - Feature: Data Management (Export/Import/Reset)
+### 2026-03-02 - UI, UX, and AI Enhancements: GPT-4o Upgrade & Local Crop
+
+**Description:**
+Completely overhauled the AI metadata extraction and cropping workflows. Replaced the remote model's incorrect bounding box cropping with local, instantaneous ML processing. Switched from Llama 3.2 Vision to **GPT-4o**, eliminating image stitching to natively process high-resolution individual photos of the front and back to drastically boost success rate of identifying mints and years hidden inside stars on Spanish coins.
+
+**Plan:**
+1.  **Local Background Removal:**
+    *   Added `@imgly/background-removal` to process images locally for accurate coin bounding boxes.
+2.  **GPT-4o High-Res OCR & Prompts:**
+    *   Replaced `Llama-3.2-11B-Vision-Instruct` with `gpt-4o` and activated native JSON response formats.
+    *   Rewrote specialized numismatic prompts.
+    *   Removed `stitchImages` so both front and back images are passed individually in `detail: "high"` allowing the AI to read microscopic characters clearly.
+    *   Image compression is now deferred to the final step right before saving to `Dexie.js` to preserve maximum fidelity during analysis.
+3.  **UI Updates:**
+    *   Enlarged "Aceptar Recorte" button.
+
+### 2026-02-27 - Feature: Data Management (Export/Import/Reset)
 
 **Description:**
 Implemented functionality to export the entire coin database (including images) to a compressed ZIP file, import data from ZIP backups with deduplication, and reset the database with a safety confirmation.
@@ -48,7 +64,7 @@ Implemented functionality to export the entire coin database (including images) 
     *   Added buttons for "Exportar", "Importar", and "Restablecer Base de Datos".
     *   Implemented progress indicators and confirmation modals.
 
-### 2025-05-18 - Feature: Auto-crop coin images using AI detection
+### 2026-02-27 - Feature: Auto-crop coin images using AI detection
 
 **Description:**
 Enhanced the coin addition process by automatically detecting the coin's bounding box and cropping the image.
@@ -62,7 +78,7 @@ Enhanced the coin addition process by automatically detecting the coin's boundin
 3.  **Updated `src/pages/AddCoin.jsx`:**
     *   Integrated detection and cropping steps into the coin analysis workflow.
 
-### 2025-05-18 - Improvement: Switch to GitHub Models (Llama 3.2 Vision)
+### 2026-02-27 - Improvement: Switch to GitHub Models (Llama 3.2 Vision)
 
 **Description:**
 Replaced Google Gemini with **Llama 3.2 11B Vision Instruct** via GitHub Models to improve image cropping accuracy and metadata extraction.
