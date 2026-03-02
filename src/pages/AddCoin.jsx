@@ -5,6 +5,7 @@ import { compressImage } from '../utils/imageUtils';
 import { identifyCoin } from '../utils/aiModel.js';
 import { db } from '../db';
 import CropModal from '../components/CropModal';
+import { processImageLocally } from '../utils/backgroundRemoval';
 
 export default function AddCoin() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function AddCoin() {
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null); // The raw image to be cropped
   const [cropType, setCropType] = useState(null); // 'front' or 'back'
+  const [initialCropBox, setInitialCropBox] = useState(null);
 
   // Form Data
   const [formData, setFormData] = useState({
@@ -35,13 +37,26 @@ export default function AddCoin() {
 
     setProcessing(true);
     try {
-      // 1. Compress initially (optional, but good for performance before crop)
+      // 1. Compress initially
       const compressedBlob = await compressImage(file);
 
-      // 2. Open Crop Modal
+      // 2. Local AI Auto-Detection (Background removal to find coin)
+      let detectedBox = null;
+      try {
+        const aiResult = await processImageLocally(compressedBlob);
+        if (aiResult.boundingBox) {
+           detectedBox = aiResult.boundingBox;
+           console.log("Auto-detected coin bounds:", detectedBox);
+        }
+      } catch (aiError) {
+        console.warn('Local AI detection failed, falling back to manual center crop:', aiError);
+      }
+
+      // 3. Open Crop Modal with or without initial bounding box
       const imageUrl = URL.createObjectURL(compressedBlob);
       setImageToCrop(imageUrl);
       setCropType(type);
+      setInitialCropBox(detectedBox);
       setCropModalOpen(true);
 
     } catch (error) {
@@ -206,6 +221,7 @@ export default function AddCoin() {
       {cropModalOpen && imageToCrop && (
         <CropModal
           image={imageToCrop}
+          initialBox={initialCropBox}
           onCancel={handleCropCancel}
           onSave={handleCropSave}
           title={cropType === 'front' ? 'Recortar Anverso' : 'Recortar Reverso'}
