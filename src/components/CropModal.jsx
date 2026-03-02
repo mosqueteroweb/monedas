@@ -68,13 +68,18 @@ export default function CropModal({ image, initialBox, onCancel, onSave, title }
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 text-white">
-        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-full">
-          <X size={24} />
+      <div className="flex justify-between items-center p-4 text-white md:p-6 bg-gray-900">
+        <button onClick={onCancel} className="p-2 hover:bg-white/10 rounded-full flex items-center gap-2 transition-colors">
+          <X size={28} className="md:w-8 md:h-8" />
+          <span className="hidden md:inline font-medium">Cancelar</span>
         </button>
-        <h3 className="font-semibold text-lg">{title || 'Recortar Imagen'}</h3>
-        <button onClick={handleSave} className="p-2 bg-blue-600 hover:bg-blue-700 rounded-full">
-          <Check size={24} />
+        <h3 className="font-semibold text-lg md:text-2xl">{title || 'Recortar Imagen'}</h3>
+        <button
+          onClick={handleSave}
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full md:px-8 md:py-4 transition-all shadow-lg shadow-blue-900/50 hover:scale-105 active:scale-95"
+        >
+          <Check size={28} className="md:w-8 md:h-8" />
+          <span className="font-bold text-base md:text-xl">Aceptar Recorte</span>
         </button>
       </div>
 
