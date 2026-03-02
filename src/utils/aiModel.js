@@ -1,14 +1,12 @@
-import { stitchImages } from './imageProcessing.js';
-
 export async function identifyCoin(frontBlob, backBlob) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
   if (!apiKey) {
     throw new Error('GitHub Token no configurado. Ve a Ajustes.');
   }
 
-  // Stitch images to bypass 1-image limit
-  const stitchedBlob = await stitchImages(frontBlob, backBlob);
-  const stitchedBase64 = await blobToBase64(stitchedBlob);
+  // Convert each high-res image to base64 separately (no stitching, to retain max detail)
+  const frontBase64 = await blobToBase64(frontBlob);
+  const backBase64 = await blobToBase64(backBlob);
 
   const prompt = `
     Analyze this image containing the front and back of a European/Spanish coin.
@@ -29,7 +27,8 @@ export async function identifyCoin(frontBlob, backBlob) {
   `;
 
   const resultText = await callGitHubModel(apiKey, prompt, [
-    { type: stitchedBlob.type, data: stitchedBase64 }
+    { type: frontBlob.type, data: frontBase64 },
+    { type: backBlob.type, data: backBase64 }
   ]);
 
   return parseJSONResponse(resultText);
@@ -39,9 +38,9 @@ export async function estimateValue(coin) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
   if (!apiKey) throw new Error('GitHub Token no configurado.');
 
-  // Stitch images to bypass 1-image limit
-  const stitchedBlob = await stitchImages(coin.frontImage, coin.backImage);
-  const stitchedBase64 = await blobToBase64(stitchedBlob);
+  // Convert separately for maximum value assessment resolution
+  const frontBase64 = await blobToBase64(coin.frontImage);
+  const backBase64 = await blobToBase64(coin.backImage);
 
   const prompt = `
     Act as an expert numismatist. Value this coin (image shows front and back):
@@ -60,7 +59,8 @@ export async function estimateValue(coin) {
   `;
 
   const resultText = await callGitHubModel(apiKey, prompt, [
-    { type: stitchedBlob.type, data: stitchedBase64 }
+    { type: coin.frontImage.type, data: frontBase64 },
+    { type: coin.backImage.type, data: backBase64 }
   ]);
 
   const data = parseJSONResponse(resultText);
