@@ -11,21 +11,21 @@ export async function identifyCoin(frontBlob, backBlob) {
   const stitchedBase64 = await blobToBase64(stitchedBlob);
 
   const prompt = `
-    Analyze this image containing the front and back of a coin.
-    PERFORM OCR TO READ ALL VISIBLE TEXT.
+    Analyze this image containing the front and back of a European/Spanish coin.
+    PERFORM A METICULOUS OCR TO READ ALL VISIBLE TEXT, NO MATTER HOW WORN OR SMALL.
 
-    - Look closely for the YEAR of minting. It is usually a 4-digit number (e.g., 1999, 2023). sometimes it is small.
-    - Look for the MINT MARK (CECA). It is often a single letter (M, A, P, S) or a small symbol/monogram near the year or denomination.
-    - Look for the COUNTRY name or text indicating the issuer.
-    - Look for the DENOMINATION (value).
+    - Look closely for the YEAR of minting. It is usually a 4-digit number (e.g., 1999, 2023). IMPORTANT: On older Spanish Pesetas, the large year on the front might just be the authorization year. Look very closely inside the tiny stars on the back/front for the ACTUAL minting year (e.g., "19", "66" inside stars means 1966). If there is a year inside a star, use that one.
+    - Look for the MINT MARK (CECA). It is often a small symbol, monogram, or letter. For Spain, look for the Crowned "M" (Ceca de Madrid), or a tiny "S", "BA" (Barcelona), etc. Look near the edges, below the denomination, or flanking the main design.
+    - Look for the COUNTRY name (e.g., "ESPAÑA", "FRANCE", "ITALIA") or issuer text.
+    - Look for the DENOMINATION (value) (e.g., "1 EURO", "5 PTAS", "100 PESETAS").
 
     Extract the following information strictly in JSON format:
-    - country: Country of origin (in Spanish).
-    - year: Year of minting (number or null if not visible).
+    - country: Country of origin (translate to Spanish, e.g., "España", "Francia").
+    - year: The actual year of minting (number or string, e.g., "1966").
     - denomination: Denomination (e.g., "1 Euro", "5 Pesetas").
-    - mintMark: Mint mark (if visible, otherwise null).
+    - mintMark: Mint mark description (e.g., "M Coronada" for Madrid, "A" for Paris, or null if absolutely not visible).
 
-    Respond ONLY with the raw JSON object. Do not include markdown code blocks, explanations, or any other text.
+    Ensure you return a valid JSON object.
   `;
 
   const resultText = await callGitHubModel(apiKey, prompt, [
@@ -51,18 +51,20 @@ export async function estimateValue(coin) {
     - Mint Mark: ${coin.mintMark || 'N/A'}
 
     Based on the images (visible condition) and data, estimate an approximate market value in Euros.
+    Account for rarity of specific years and mint marks (e.g., key dates in Spanish pesetas like 1946 *48, or the 1966 *69).
 
-    Respond ONLY with the decimal number (the estimated value in Euros).
-    Example: 5.50
-    Do not include the currency symbol or additional text.
+    Extract the result strictly in JSON format.
+    - value: Estimated value in Euros (number, e.g., 5.50).
+
+    Ensure you return a valid JSON object.
   `;
 
-  const result = await callGitHubModel(apiKey, prompt, [
+  const resultText = await callGitHubModel(apiKey, prompt, [
     { type: stitchedBlob.type, data: stitchedBase64 }
   ]);
 
-  const value = parseFloat(result.trim().replace(/[^0-9.]/g, ''));
-  return isNaN(value) ? 0 : value;
+  const data = parseJSONResponse(resultText);
+  return typeof data.value === 'number' && !isNaN(data.value) ? data.value : 0;
 }
 
 async function callGitHubModel(apiKey, prompt, images) {
@@ -78,7 +80,8 @@ async function callGitHubModel(apiKey, prompt, images) {
         ...images.map(img => ({
           type: "image_url",
           image_url: {
-            url: `data:${img.type};base64,${img.data}`
+            url: `data:${img.type};base64,${img.data}`,
+            detail: "high"
           }
         }))
       ]
@@ -87,10 +90,11 @@ async function callGitHubModel(apiKey, prompt, images) {
 
   const body = {
     messages,
-    model: "Llama-3.2-11B-Vision-Instruct",
+    model: "gpt-4o",
     temperature: 0.1,
     max_tokens: 1024,
-    top_p: 1
+    top_p: 1,
+    response_format: { type: "json_object" }
   };
 
   const response = await fetch("https://models.inference.ai.azure.com/chat/completions", {
