@@ -1,7 +1,27 @@
 import { db } from '../db';
 import JSZip from 'jszip';
 import { v4 as uuidv4 } from 'uuid'; // Fallback if crypto.randomUUID not available (though it is in most modern browsers)
-export { blobToDataURL as blobToBase64, base64ToBlob } from './blobUtils';
+
+// Helper to convert Blob to Base64
+export function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Helper to convert Base64 to Blob
+export function base64ToBlob(base64, mimeType = 'image/webp') {
+  const byteString = atob(base64.split(',')[1]);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mimeType });
+}
 
 export async function exportDatabase(onProgress) {
   try {
@@ -10,10 +30,8 @@ export async function exportDatabase(onProgress) {
 
     onProgress('Procesando imágenes...');
     const totalCoins = coins.length;
-    const coinsToExport = [];
 
-    for (let i = 0; i < totalCoins; i++) {
-      const coin = coins[i];
+    const coinsToExport = await Promise.all(coins.map(async (coin) => {
       let frontImageBase64 = null;
       let backImageBase64 = null;
 
@@ -30,7 +48,7 @@ export async function exportDatabase(onProgress) {
         coin.uuid = uuidv4();
       }
 
-      coinsToExport.push({
+      return {
         uuid: coin.uuid, // Key for deduplication
         country: coin.country,
         year: coin.year,
@@ -41,12 +59,8 @@ export async function exportDatabase(onProgress) {
         createdAt: coin.createdAt,
         frontImage: frontImageBase64,
         backImage: backImageBase64
-      });
-
-      if (i % 5 === 0 || i === totalCoins - 1) {
-        onProgress(`Procesando imágenes: ${i + 1}/${totalCoins}`);
-      }
-    }
+      };
+    }));
 
     onProgress(`Comprimiendo ${totalCoins} monedas...`);
     const zip = new JSZip();

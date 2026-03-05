@@ -1,5 +1,3 @@
-import { blobToBase64 } from './blobUtils';
-
 export async function identifyCoin(frontBlob, backBlob) {
   const apiKey = localStorage.getItem('GITHUB_TOKEN');
   if (!apiKey) {
@@ -162,3 +160,14 @@ function parseJSONResponse(text) {
   }
 }
 
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
