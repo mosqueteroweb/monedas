@@ -1,27 +1,7 @@
 import { db } from '../db';
 import JSZip from 'jszip';
 import { v4 as uuidv4 } from 'uuid'; // Fallback if crypto.randomUUID not available (though it is in most modern browsers)
-
-// Helper to convert Blob to Base64
-export function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-// Helper to convert Base64 to Blob
-export function base64ToBlob(base64, mimeType = 'image/webp') {
-  const byteString = atob(base64.split(',')[1]);
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([ab], { type: mimeType });
-}
+export { blobToDataURL as blobToBase64, base64ToBlob } from './blobUtils';
 
 export async function exportDatabase(onProgress) {
   try {
