@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db.js';
 import JSZip from 'jszip';
 import { v4 as uuidv4 } from 'uuid'; // Fallback if crypto.randomUUID not available (though it is in most modern browsers)
 
@@ -110,21 +110,31 @@ export function importDatabase(file, onProgress) {
 
         onProgress(`Analizando ${importedData.length} monedas...`);
 
-        let newCoinsCount = 0;
         const total = importedData.length;
+
+        // Optimize: Fetch all existing UUIDs in one query to avoid N+1 reads
+        const incomingUuids = importedData.map(c => c.uuid).filter(Boolean);
+        let existingUuidsSet = new Set();
+
+        if (incomingUuids.length > 0) {
+            // Chunking to avoid exceeding query limits
+            const CHUNK_SIZE = 1000;
+            for (let i = 0; i < incomingUuids.length; i += CHUNK_SIZE) {
+                const chunk = incomingUuids.slice(i, i + CHUNK_SIZE);
+                const existingRecords = await db.coins.where('uuid').anyOf(chunk).toArray();
+                existingRecords.forEach(c => existingUuidsSet.add(c.uuid));
+            }
+        }
+
+        const coinsToAdd = [];
 
         for (let i = 0; i < total; i++) {
             const coin = importedData[i];
 
             // Check if coin with this UUID already exists
             let exists = false;
-            if (coin.uuid) {
-                const existing = await db.coins.where('uuid').equals(coin.uuid).first();
-                if (existing) exists = true;
-            } else {
-                 // Fallback: Check composite key if no UUID in import (older export?)
-                 // This is risky but better than duplicating everything if user imports an old JSON
-                 // Let's assume exports will have UUID from now on.
+            if (coin.uuid && existingUuidsSet.has(coin.uuid)) {
+                exists = true;
             }
 
             if (!exists) {
@@ -143,9 +153,11 @@ export function importDatabase(file, onProgress) {
                     backImageBlob = base64ToBlob(coin.backImage, mimeType);
                 }
 
-                // Add new coin
-                await db.coins.add({
-                    uuid: coin.uuid || uuidv4(), // Generate if missing
+                const newUuid = coin.uuid || uuidv4();
+
+                // Add to array for bulk insertion
+                coinsToAdd.push({
+                    uuid: newUuid, // Generate if missing
                     country: coin.country,
                     year: coin.year,
                     denomination: coin.denomination,
@@ -156,16 +168,23 @@ export function importDatabase(file, onProgress) {
                     frontImage: frontImageBlob,
                     backImage: backImageBlob
                 });
-                newCoinsCount++;
+
+                // Add to set to prevent intra-file duplicates
+                existingUuidsSet.add(newUuid);
             }
 
-            // Update progress every 5 items or so to avoid UI blocking
-            if (i % 5 === 0) {
-                onProgress(`Importando: ${i + 1}/${total}`);
+            // Update progress every 50 items to avoid UI blocking (increased from 5 for performance)
+            if (i % 50 === 0) {
+                onProgress(`Preparando: ${i + 1}/${total}`);
             }
         }
 
-        resolve({ success: true, count: newCoinsCount, totalProcessed: total });
+        if (coinsToAdd.length > 0) {
+            onProgress(`Guardando ${coinsToAdd.length} monedas nuevas...`);
+            await db.coins.bulkAdd(coinsToAdd);
+        }
+
+        resolve({ success: true, count: coinsToAdd.length, totalProcessed: total });
       } catch (error) {
         console.error("Import error:", error);
         reject(error);
