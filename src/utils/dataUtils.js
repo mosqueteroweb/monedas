@@ -10,8 +10,10 @@ export async function exportDatabase(onProgress) {
 
     onProgress('Procesando imágenes...');
     const totalCoins = coins.length;
+    const coinsToExport = [];
 
-    const coinsToExport = await Promise.all(coins.map(async (coin) => {
+    for (let i = 0; i < totalCoins; i++) {
+      const coin = coins[i];
       let frontImageBase64 = null;
       let backImageBase64 = null;
 
@@ -28,7 +30,7 @@ export async function exportDatabase(onProgress) {
         coin.uuid = uuidv4();
       }
 
-      return {
+      coinsToExport.push({
         uuid: coin.uuid, // Key for deduplication
         country: coin.country,
         year: coin.year,
@@ -39,8 +41,12 @@ export async function exportDatabase(onProgress) {
         createdAt: coin.createdAt,
         frontImage: frontImageBase64,
         backImage: backImageBase64
-      };
-    }));
+      });
+
+      if (i % 5 === 0 || i === totalCoins - 1) {
+        onProgress(`Procesando imágenes: ${i + 1}/${totalCoins}`);
+      }
+    }
 
     onProgress(`Comprimiendo ${totalCoins} monedas...`);
     const zip = new JSZip();
